@@ -1,0 +1,4 @@
+#!/usr/bin/env ruby
+
+require 'elastic-schema'
+ElasticSchema::CLI.new(ARGV).run!
