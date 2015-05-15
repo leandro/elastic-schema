@@ -62,5 +62,9 @@ module ElasticSchema
         abort "Unknown command: #{@command}. Available commands: #{self.class.commands.join(', ')}"
       end
     end
+
+    def run_command
+      Command.new(@options[:host], @options[:root], @options[:schema_dir]).run(@command)
+    end
   end
 end
