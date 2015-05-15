@@ -13,6 +13,8 @@ Gem::Specification.new do |s|
   s.summary     = "Elasticsearch schema manager for Ruby"
   s.description = "A stateful way to approach Elasticsearch document mappings and data migrations"
 
+  s.required_ruby_version = '>= 2.0'
+
   s.add_dependency 'elasticsearch-transport'
 
   s.files            = `git ls-files -- lib/*`.split("\n")
