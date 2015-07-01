@@ -15,6 +15,20 @@ The default strategy adopted by this tool is to create a new index with temporar
 
     gem install elastic-schema
 
+## Usage
+
+Firstly, load the gem in your Gemfile:
+
+    gem "elastic-schema", :git => "git://github.com/leandro/elastic-schema.git"
+
+Then, run bundle install in your app root directory and just run:
+
+    eschema -h 127.0.0.1:9201 -s directory/where/your/es/schemas/are/ create
+
+For further information just run:
+
+    eschema --help
+
 ## Contribute
 
 If you want to contribute, please fork this project, make the changes and create a Pull Request mentioning me.
