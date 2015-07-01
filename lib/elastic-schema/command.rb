@@ -2,7 +2,7 @@ module ElasticSchema
 
   class Command
 
-    attr_reader :client, :root, :schema_dir, :schema_files
+    attr_reader :client, :root, :schema_dir
 
     def initialize(host, root, schema_dir)
       @client     = Elasticsearch::Client.new(host: host)
@@ -21,21 +21,24 @@ module ElasticSchema
       load_schemas
     end
 
-    def get_schemas
-      @schema_files  = []
+    def schema_files
       schema_pattern = File.join(schema_dir, '*.schema.rb')
-
-      Dir[schema_pattern].each do |schema_file|
-        @schema_files << schema_file
-      end
-
-      @schema_files
+      Dir[schema_pattern].inject([]) { |files, schema_file| files << schema_file }
     end
 
     def load_schemas
-      get_schemas.each do |schema_file|
-        require schema_file
+      schema_files.each { |schema_file| require schema_file }
+
+      loaded_schemas.each do |schema_id, mapping|
+        index, type = schema_id.split('/')
+        body        = { type => { 'properties' => mapping } }
+        client.indices.create(index: index) unless client.indices.exists(index: index)
+        client.indices.put_mapping(index: index, type: type, body: body)
       end
+    end
+
+    def loaded_schemas
+      ElasticSchema::Schema::Definition.definitions
     end
   end
 end

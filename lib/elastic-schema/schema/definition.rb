@@ -8,7 +8,6 @@ module ElasticSchema::Schema
     @@definitions = {}
 
     def initialize(&block)
-      @index        = :_all
       @mapping      = {}
       @_field_chain = []
 
@@ -19,15 +18,14 @@ module ElasticSchema::Schema
       end
 
       @@definitions[schema_id] = @mapping
-      p @@definitions
     end
 
-    def index(name)
+    def index(name = nil)
       return if @index
       @index = name
     end
 
-    def type(name)
+    def type(name = nil)
       return if @type
       @type = name
     end
@@ -44,14 +42,17 @@ module ElasticSchema::Schema
         fail FieldAlreadyDefined.new("The mapping for field #{field_mapping} has been already defined.")
       end
 
-      initial_settings = type == 'object' ? {} : { 'type' => type }
-      mapping[name]    = opts.inject(initial_settings) do |settings, (attr, value)|
+      mapping[name] = opts.inject({ 'type' => type }) do |settings, (attr, value)|
         settings.update(attr.to_s => value.to_s)
       end
 
       instance_eval(&block) if block_given?
 
       @_field_chain.pop
+    end
+
+    def self.definitions
+      @@definitions
     end
 
     private

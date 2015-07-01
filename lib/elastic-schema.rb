@@ -1,4 +1,4 @@
-require 'elasticsearch/transport'
+require 'elasticsearch'
 
 module ElasticSchema
 
