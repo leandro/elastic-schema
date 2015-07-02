@@ -29,11 +29,12 @@ module ElasticSchema
     def load_schemas
       schema_files.each { |schema_file| require schema_file }
 
-      loaded_schemas.each do |schema_id, mapping|
+      loaded_schemas.each do |schema_id, schema|
         index, type = schema_id.split('/')
-        body        = { type => { 'properties' => mapping } }
-        client.indices.create(index: index) unless client.indices.exists(index: index)
-        client.indices.put_mapping(index: index, type: type, body: body)
+        body        = schema.mapping.to_hash
+        p body
+        #client.indices.create(index: index) unless client.indices.exists(index: index)
+        #client.indices.put_mapping(index: index, type: type, body: body)
       end
     end
 
