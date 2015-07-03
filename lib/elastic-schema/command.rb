@@ -18,27 +18,15 @@ module ElasticSchema
 
     # Creates the indices/types and raise an exception if the any of the indices/types already exists
     def create
-      load_schemas
+      Schema::Migration.new(client, schema_files).load_definitions.run
     end
 
     def schema_files
-      schema_pattern = File.join(schema_dir, '*.schema.rb')
       Dir[schema_pattern].inject([]) { |files, schema_file| files << schema_file }
     end
 
-    def load_schemas
-      schema_files.each { |schema_file| require schema_file }
-
-      loaded_schemas.each do |schema_id, schema|
-        index, type = schema_id.split('/')
-        body        = schema.mapping.to_hash[index]['mappings']
-        client.indices.create(index: index) unless client.indices.exists(index: index)
-        client.indices.put_mapping(index: index, type: type, body: body)
-      end
-    end
-
-    def loaded_schemas
-      ElasticSchema::Schema::Definition.definitions
+    def schema_pattern
+      File.join(schema_dir, '*.schema.rb')
     end
   end
 end

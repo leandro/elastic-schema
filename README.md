@@ -11,10 +11,6 @@ Once any of the mappings and/or settings suffers any change by a developer, this
 
 The default strategy adopted by this tool is to create a new index with temporary name in order to create a whole new mapping that reflects the up-to-date mapping in the codebase. Once it's done it'll try (by default) to reindex all the data present in old index to the new one and once it's done it'll remove the old index and rename the new one.
 
-## Install
-
-    gem install elastic-schema
-
 ## Usage
 
 Firstly, load the gem in your Gemfile:
