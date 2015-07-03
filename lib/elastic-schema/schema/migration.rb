@@ -36,7 +36,7 @@ module ElasticSchema::Schema
 
     def update_mapping(index, type, mapping)
       if must_reindex?(index, type)
-        migrate_data(index, data, mapping)
+        migrate_data(index, type, mapping)
       else
         begin
           # We firstly try to update the index as it is, in case of solely new
@@ -52,7 +52,7 @@ module ElasticSchema::Schema
     # Migrates data from index/type to a new index/type and create an alias to it
     def migrate_data(index, type, mapping)
       timestamp = Time.new.to_i
-      tmp_index = "#{index}_v1"
+      tmp_index = "#{index}_v#{timestamp}"
       create_type(tmp_index, type, mapping)
       copy_documents(type, index, tmp_index)
       alias_index(tmp_index, index)
@@ -65,7 +65,10 @@ module ElasticSchema::Schema
     end
 
     def copy_documents(type, old_index, new_index)
-      return unless documents_count(old_index, type) > 0
+      return unless (doc_count = documents_count(old_index, type)) > 0
+
+      puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
+
       result        = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
       bulk_template = { index: { _index: new_index, _type: type } }
       while (result = result.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
@@ -78,8 +81,8 @@ module ElasticSchema::Schema
     end
 
     def must_reindex?(index, type)
-      new_mapping = schemas["#{index}/#{type}"].mapping.to_hash[index]['mappings'][type]['properties']
-      old_mapping = actual_schemas["#{index}/#{type}"][index]['mappings'][type]['properties']
+      new_mapping = schemas["#{index}/#{type}"].mapping.to_hash[index]['mappings'][type]['properties'] rescue {}
+      old_mapping = actual_schemas["#{index}/#{type}"].values.first['mappings'][type]['properties']
       new_mapping_fields = extract_field_names(new_mapping)
       old_mapping_fields = extract_field_names(old_mapping)
       (old_mapping_fields & new_mapping_fields) != old_mapping_fields
@@ -106,14 +109,17 @@ module ElasticSchema::Schema
     end
 
     def delete_alias(alias_name)
+      puts "Deleting index alias '#{alias_name}'"
       client.indices.delete_alias(alias_name)
     end
 
     def delete_index(index)
+      puts "Deleting index '#{index}'"
       client.indices.delete(index: index)
     end
 
     def create_index(index)
+      puts "Creating index '#{index}'"
       client.indices.create(index: index)
     end
 
@@ -135,20 +141,34 @@ module ElasticSchema::Schema
     end
 
     def put_mapping(index, type, mapping)
+      puts "Creating/updating type '#{type}' in index '#{index}'"
       client.indices.put_mapping(index: index, type: type, body: mapping)
     end
 
     # Get all the index/type in ES that diverge from the definitions
     def types_to_update
       schemas.select do |schema_id, schema|
-        index, type     = schema_id.split('/')
-        current_mapping = begin
-                            client.indices.get_mapping(index: index, type: type)
-                          rescue Elasticsearch::Transport::Transport::Errors::NotFound => exc
-                            {}
-                          end
+        index, type                = schema_id.split('/')
+        current_mapping            = fetch_mapping(index, type)
         @actual_schemas[schema_id] = current_mapping
-        schema.mapping.to_hash != current_mapping
+        schema.mapping.to_hash.values.first != current_mapping.values.first
+      end
+    end
+
+    def fetch_mapping(index, type)
+      begin
+        client.indices.get_mapping(index: real_index_for(index), type: type)
+      rescue Elasticsearch::Transport::Transport::Errors::NotFound
+        {}
+      end
+    end
+
+    # For cases where {index} might be an alias instead
+    def real_index_for(index)
+      begin
+        client.indices.get_alias(name: index).keys.first
+      rescue Elasticsearch::Transport::Transport::Errors::NotFound
+        index
       end
     end
 
