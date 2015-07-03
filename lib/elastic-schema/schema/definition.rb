@@ -31,7 +31,7 @@ module ElasticSchema::Schema
     end
 
     def field(name, type = :object, opts = {}, &block)
-      @mapping ||= Mapping.new(index, type)
+      @mapping ||= Mapping.new(@index, @type)
       name       = name.to_s
       type       = type.to_s
 

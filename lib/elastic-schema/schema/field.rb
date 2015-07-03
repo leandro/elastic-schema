@@ -7,8 +7,12 @@ module ElasticSchema::Schema
       @name       = field_name.to_s
       @type       = type.to_s
       @parent     = attrs.delete(:parent)
-      @attributes = attrs.inject({}) { |_attrs, (attr, value)| _attrs.update(attr.to_s => value) }
       @children   = FieldsSet.new(self)
+      @attributes = attrs.inject({}) do |_attrs, (attr, value)|
+                      value = value.to_s if value.is_a?(Symbol)
+                      _attrs.update(attr.to_s => value)
+                    end
+      filter_attributes_for_special_cases
     end
 
     def find(field_name)
@@ -20,11 +24,18 @@ module ElasticSchema::Schema
     end
 
     def to_hash
-      {
-        name => {
-          'type' => type
-        }.merge(attributes)
-      }.merge(children.to_hash)
+      attrs = type == 'object' ? {} : { 'type' => type }
+      { name => attrs.merge(attributes).merge(children.to_hash) }
+    end
+
+    private
+
+    def filter_attributes_for_special_cases
+      case type
+      when 'date'
+        attributes.update('format' => 'dateOptionalTime') if type == 'date'
+        attributes.delete('index')
+      end
     end
   end
 

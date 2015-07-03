@@ -5,8 +5,8 @@ module ElasticSchema::Schema
     attr_reader :index, :type
 
     def initialize(index, type)
-      @index = index
-      @type  = type
+      @index = index.to_s
+      @type  = type.to_s
     end
 
     def add_field(field_name, type = 'object', attrs = {})
@@ -16,7 +16,7 @@ module ElasticSchema::Schema
     end
 
     def find(field_name)
-      field_name.split.inject(fields) { |field_set, piece_name| field_set.find(piece_name) }
+      field_name.split('.').inject(fields) { |field_set, piece_name| field_set.find(piece_name) }
     end
 
     def full_name
@@ -35,12 +35,7 @@ module ElasticSchema::Schema
 
     def parent(field_name)
       nested_names = field_name.split('.')
-      begin
-        nested_names.size == 1 ? fields : find(nested_names[0..-2].join('.')).children
-      rescue
-        p fields
-        fail
-      end
+      nested_names.size == 1 ? fields : find(nested_names[0..-2].join('.')).children
     end
   end
 

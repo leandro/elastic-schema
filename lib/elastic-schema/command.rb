@@ -31,10 +31,9 @@ module ElasticSchema
 
       loaded_schemas.each do |schema_id, schema|
         index, type = schema_id.split('/')
-        body        = schema.mapping.to_hash
-        p body
-        #client.indices.create(index: index) unless client.indices.exists(index: index)
-        #client.indices.put_mapping(index: index, type: type, body: body)
+        body        = schema.mapping.to_hash[index]['mappings']
+        client.indices.create(index: index) unless client.indices.exists(index: index)
+        client.indices.put_mapping(index: index, type: type, body: body)
       end
     end
 
