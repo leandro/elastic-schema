@@ -35,21 +35,53 @@ module ElasticSchema::Schema
     end
 
     def update_mapping(index, type, mapping)
-      must_reindex?(index, type)
-      begin
-        # We firstly try to update the index as it is, in case of solely new
-        # fields being added
-        put_mapping(index, type, mapping)
-      rescue Elasticsearch::Transport::Transport::Errors::BadRequest => exc
-        # We get here if we get MergeMappingException from Elasticsearch
-        timestamp = Time.new.to_i
-        temp_type = "#{type}_v#{timestamp}"
+      if must_reindex?(index, type)
+        migrate_data(index, data, mapping)
+      else
+        begin
+          # We firstly try to update the index as it is, in case of solely new
+          # fields being added
+          put_mapping(index, type, mapping)
+        rescue Elasticsearch::Transport::Transport::Errors::BadRequest
+          # We get here if we get MergeMappingException from Elasticsearch
+          migrate_data(index, type, mapping)
+        end
+      end
+    end
+
+    # Migrates data from index/type to a new index/type and create an alias to it
+    def migrate_data(index, type, mapping)
+      timestamp = Time.new.to_i
+      tmp_index = "#{index}_v1"
+      create_type(tmp_index, type, mapping)
+      copy_documents(type, index, tmp_index)
+      alias_index(tmp_index, index)
+    end
+
+    def alias_index(index, alias_name)
+      delete_index(alias_name) if index_exists?(alias_name)
+      delete_alias(alias_name) if alias_exists?(alias_name)
+      client.indices.put_alias(index: index, name: alias_name)
+    end
+
+    def copy_documents(type, old_index, new_index)
+      return unless documents_count(old_index, type) > 0
+      result        = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
+      bulk_template = { index: { _index: new_index, _type: type } }
+      while (result = result.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
+        body = docs.map do |document|
+                 bulk_item = bulk_template.dup
+                 bulk_item[:index].update(_id: document['_id'], data: document['_source'])
+               end
+        client.bulk(body: body)
       end
     end
 
     def must_reindex?(index, type)
-      new_mapping_fields = extract_field_names(actual_schemas["#{index}/#{type}"][index]['mappings'][type]['properties'])
-      old_mapping_fields = extract_field_names(schemas["#{index}/#{type}"][index]['mappings'][type]['properties'])
+      new_mapping = schemas["#{index}/#{type}"].mapping.to_hash[index]['mappings'][type]['properties']
+      old_mapping = actual_schemas["#{index}/#{type}"][index]['mappings'][type]['properties']
+      new_mapping_fields = extract_field_names(new_mapping)
+      old_mapping_fields = extract_field_names(old_mapping)
       (old_mapping_fields & new_mapping_fields) != old_mapping_fields
     end
 
@@ -70,7 +102,15 @@ module ElasticSchema::Schema
     end
 
     def documents_count(index, type)
-      client.count(index: index, type: type)
+      client.count(index: index, type: type)['count']
+    end
+
+    def delete_alias(alias_name)
+      client.indices.delete_alias(alias_name)
+    end
+
+    def delete_index(index)
+      client.indices.delete(index: index)
     end
 
     def create_index(index)
@@ -80,6 +120,10 @@ module ElasticSchema::Schema
     def create_type(index, type, mapping)
       create_index(index) unless index_exists?(index)
       put_mapping(index, type, mapping)
+    end
+
+    def alias_exists?(alias_name)
+      client.indices.exists_alias(name: alias_name)
     end
 
     def index_exists?(index)
