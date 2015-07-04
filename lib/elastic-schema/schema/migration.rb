@@ -2,12 +2,13 @@ module ElasticSchema::Schema
 
   class Migration
 
-    attr_reader :schema_files, :client, :actual_schemas
+    attr_reader :schema_files, :client, :actual_schemas, :timestamp
 
     def initialize(client, schema_files)
       @client         = client
       @schema_files   = schema_files
       @actual_schemas = {}
+      @timestamp      = Time.new.to_i
     end
 
     def load_definitions
@@ -29,7 +30,9 @@ module ElasticSchema::Schema
         if type_exists?(index, type)
           update_mapping(index, type, body)
         else
-          create_type(index, type, body)
+          new_index = new_index_name(index)
+          create_type(new_index, type, body)
+          alias_index(new_index, index)
         end
       end
     end
@@ -51,17 +54,26 @@ module ElasticSchema::Schema
 
     # Migrates data from index/type to a new index/type and create an alias to it
     def migrate_data(index, type, mapping)
-      timestamp = Time.new.to_i
-      tmp_index = "#{index}_v#{timestamp}"
-      create_type(tmp_index, type, mapping)
-      copy_documents(type, index, tmp_index)
-      alias_index(tmp_index, index)
+      new_index = new_index_name(index)
+      create_type(new_index, type, mapping)
+      copy_documents(type, index, new_index)
+      delete_index_with_same_name_as_alias(index)
+      alias_index(new_index, index)
+      delete_older_indices(index)
     end
 
     def alias_index(index, alias_name)
-      delete_index(alias_name) if index_exists?(alias_name)
-      delete_alias(alias_name) if alias_exists?(alias_name)
+      puts "Creating alias '#{alias_name}' to index '#{index}'"
       client.indices.put_alias(index: index, name: alias_name)
+    end
+
+    def delete_older_indices(alias_name)
+      older_indices = indices_from_alias(alias_name).keys - [new_index_name(alias_name)]
+      older_indices.each { |index| delete_index(index) if index_exists?(index) }
+    end
+
+    def delete_index_with_same_name_as_alias(alias_name)
+      delete_index(alias_name) if !alias_exists?(alias_name) && index_exists?(alias_name)
     end
 
     def copy_documents(type, old_index, new_index)
@@ -108,6 +120,10 @@ module ElasticSchema::Schema
       client.count(index: index, type: type)['count']
     end
 
+    def indices_from_alias(alias_name)
+      client.indices.get_alias(name: alias_name)
+    end
+
     def delete_alias(alias_name)
       puts "Deleting index alias '#{alias_name}'"
       client.indices.delete_alias(alias_name)
@@ -143,6 +159,10 @@ module ElasticSchema::Schema
     def put_mapping(index, type, mapping)
       puts "Creating/updating type '#{type}' in index '#{index}'"
       client.indices.put_mapping(index: index, type: type, body: mapping)
+    end
+
+    def new_index_name(index)
+      "#{index}_v#{timestamp}"
     end
 
     # Get all the index/type in ES that diverge from the definitions
