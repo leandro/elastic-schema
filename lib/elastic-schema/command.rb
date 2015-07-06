@@ -18,15 +18,23 @@ module ElasticSchema
 
     # Creates the indices/types and raise an exception if the any of the indices/types already exists
     def create
-      Schema::Migration.new(client, schema_files).load_definitions.run
+      Schema::Migration.new(client, analysis_files, schema_files).load_definitions.run
     end
 
     def schema_files
       Dir[schema_pattern].inject([]) { |files, schema_file| files << schema_file }
     end
 
+    def analysis_files
+      Dir[analysis_pattern].inject([]) { |files, analysis_file| files << analysis_file }
+    end
+
     def schema_pattern
       File.join(schema_dir, '*.schema.rb')
+    end
+
+    def analysis_pattern
+      File.join(schema_dir, '{analysis.rb,*.analysis.rb}')
     end
   end
 end

@@ -2,16 +2,18 @@ module ElasticSchema::Schema
 
   class Migration
 
-    attr_reader :schema_files, :client, :actual_schemas, :timestamp
+    attr_reader :schema_files, :client, :actual_schemas, :timestamp, :analysis_files
 
-    def initialize(client, schema_files)
+    def initialize(client, analysis_files, schema_files)
       @client         = client
+      @analysis_files = analysis_files
       @schema_files   = schema_files
       @actual_schemas = {}
       @timestamp      = Time.new.to_i
     end
 
     def load_definitions
+      analysis_files.each { |schema_file| require schema_file }
       schema_files.each { |schema_file| require schema_file }
       self
     end
@@ -157,7 +159,7 @@ module ElasticSchema::Schema
     end
 
     def put_mapping(index, type, mapping)
-      puts "Creating/updating type '#{type}' in index '#{index}'"
+      puts "Creating/updating type '#{type}' in index/alias '#{index}'"
       client.indices.put_mapping(index: index, type: type, body: mapping)
     end
 
