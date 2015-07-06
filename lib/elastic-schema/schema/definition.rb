@@ -20,6 +20,10 @@ module ElasticSchema::Schema
       @@definitions[schema_id] = self
     end
 
+    def analysis(name)
+      @settings = Settings.new(analysis: name)
+    end
+
     def index(name = nil)
       return if @index
       @index = name
@@ -39,6 +43,13 @@ module ElasticSchema::Schema
       @mapping.add_field(@_field_chain.join("."), type, opts)
       instance_eval(&block) if block_given?
       @_field_chain.pop
+    end
+
+    def to_hash
+      main_hash = {}
+      main_hash.update(@mapping.to_hash) if @mapping
+      main_hash.update(@settings.to_hash) if @settings
+      { @index => main_hash }
     end
 
     def self.definitions

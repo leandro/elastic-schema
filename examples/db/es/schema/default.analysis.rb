@@ -1,4 +1,6 @@
 ElasticSchema::Schema::Analysis.new do
+  name :default
+
   filter :trigrams_filter, {
     type:     :edgeNGram,
     min_gram: 3,

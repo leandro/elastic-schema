@@ -7,12 +7,29 @@ module ElasticSchema::Schema
       instance_eval(&block)
     end
 
+    def name(name)
+      @name = name.to_s
+    end
+
     def filter(name, opts = {})
-      @@filters[name.to_s] = stringfy_symbols(opts)
+      set_name                       = @name || 'global'
+      @@filters[set_name]          ||= {}
+      @@filters[set_name][name.to_s] = stringfy_symbols(opts)
     end
 
     def analyzer(name, opts)
-      @@analyzers[name.to_s] = stringfy_symbols(opts)
+      set_name                         = @name || 'global'
+      @@analyzers[set_name]          ||= {}
+      @@analyzers[set_name][name.to_s] = stringfy_symbols(opts)
+    end
+
+    def self.analysis_for(name = nil)
+      name          = name ? name.to_s : 'global'
+      analysis_hash = { "analysis" => {} }
+
+      analysis_hash.update("filter" => @@filters[name]) if @@filters.has_key?(name)
+      analysis_hash.update("analyzer" => @@analyzers[name]) if @@analyzers.has_key?(name)
+      analysis_hash
     end
 
     private

@@ -28,7 +28,7 @@ module ElasticSchema::Schema
     end
 
     def to_hash
-      { index => { "mappings" => { type => fields.to_hash } } }
+      { "mappings" => { type => fields.to_hash } }
     end
 
     private

@@ -1,6 +1,7 @@
 ElasticSchema::Schema::Definition.new do
   index :articles
   type  :article
+  analysis :default
 
   field :title, :string, analyzer: :snowball
   field :content, :string, analyzer: :snowball

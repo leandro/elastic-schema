@@ -27,7 +27,7 @@ module ElasticSchema::Schema
     def create_or_update_types(selected_schemas)
       selected_schemas.each do |schema_id, schema|
         index, type = schema_id.split('/')
-        body        = schema.mapping.to_hash[index]['mappings']
+        body        = schema.to_hash[index]['mappings']
 
         if type_exists?(index, type)
           update_mapping(index, type, body)
