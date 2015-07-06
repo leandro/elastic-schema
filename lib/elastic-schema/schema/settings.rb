@@ -3,7 +3,7 @@ module ElasticSchema::Schema
     attr_accessor :analysis
 
     def initialize(opts = {})
-      opts = opts.inject({}) { |_opts, (key, value)| _opts(key.to_s => value) }
+      opts = opts.inject({}) { |_opts, (key, value)| _opts.update(key.to_s => value) }
 
       %w(analysis).each do |attr|
         send(:"#{attr}=", opts[attr]) if opts.has_key?(attr)

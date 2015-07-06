@@ -15,6 +15,7 @@ module ElasticSchema::Schema
     def load_definitions
       analysis_files.each { |schema_file| require schema_file }
       schema_files.each { |schema_file| require schema_file }
+      schemas.each { |k, v| p v.to_hash }
       self
     end
 

@@ -25,7 +25,7 @@ module ElasticSchema::Schema
 
     def self.analysis_for(name = nil)
       name          = name ? name.to_s : 'global'
-      analysis_hash = { "analysis" => {} }
+      analysis_hash = {}
 
       analysis_hash.update("filter" => @@filters[name]) if @@filters.has_key?(name)
       analysis_hash.update("analyzer" => @@analyzers[name]) if @@analyzers.has_key?(name)
