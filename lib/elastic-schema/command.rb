@@ -18,7 +18,7 @@ module ElasticSchema
 
     # Creates the indices/types and raise an exception if the any of the indices/types already exists
     def create
-      Schema::Migration.new(client, analysis_files, schema_files).load_definitions#.run
+      Schema::Migration.new(client, analysis_files, schema_files).load_definitions.run
     end
 
     def schema_files

@@ -27,7 +27,7 @@ module ElasticSchema::Schema
     def create_or_update_types(selected_schemas)
       selected_schemas.each do |schema_id, schema|
         index, type = schema_id.split('/')
-        body        = schema.to_hash[index]
+        body        = schema.to_hash.values.first
 
         if type_exists?(index, type)
           update_mapping(index, type, body)
@@ -85,10 +85,12 @@ module ElasticSchema::Schema
 
       result        = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
       bulk_template = { index: { _index: new_index, _type: type } }
-      while (result = result.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
+
+      while (result = client.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
         body = docs.map do |document|
                  bulk_item = bulk_template.dup
                  bulk_item[:index].update(_id: document['_id'], data: document['_source'])
+                 bulk_item
                end
         client.bulk(body: body)
       end
@@ -136,14 +138,14 @@ module ElasticSchema::Schema
       client.indices.delete(index: index)
     end
 
-    def create_index(index)
+    def create_index(index, settings)
       puts "Creating index '#{index}'"
-      client.indices.create(index: index)
+      client.indices.create(index: index, body: { settings: settings })
     end
 
-    def create_type(index, type, mapping)
-      create_index(index) unless index_exists?(index)
-      put_mapping(index, type, mapping)
+    def create_type(index, type, schema)
+      create_index(index, schema['settings']) unless index_exists?(index)
+      put_mapping(index, type, schema['mappings'])
     end
 
     def alias_exists?(alias_name)
@@ -178,7 +180,7 @@ module ElasticSchema::Schema
         end
 
         @actual_schemas[schema_id] = current_schema
-        equal_schemas?(schema.to_hash.values.first, current_schema.values.first)
+        !equal_schemas?(schema.to_hash.values.first, current_schema.values.first)
       end
     end
 
