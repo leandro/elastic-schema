@@ -48,7 +48,7 @@ module ElasticSchema::Schema
     def to_hash
       main_hash = {}
       main_hash.update(@mapping.to_hash) if @mapping
-      main_hash.update(@settings.to_hash) if @settings
+      main_hash.update(@settings.to_hash) if @settings && @settings.to_hash.any?
       { @index => main_hash }
     end
 

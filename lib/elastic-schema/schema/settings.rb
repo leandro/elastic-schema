@@ -12,8 +12,12 @@ module ElasticSchema::Schema
 
     def to_hash
       main_hash = {}
-      main_hash.update("analysis" => Analysis.analysis_for(analysis)) if analysis
-      { "settings" => { "index" => main_hash } }
+
+      if analysis && (analysis_hash = Analysis.analysis_for(analysis)).any?
+        main_hash.update("analysis" => analysis_hash)
+      end
+
+      main_hash.any? ? { "settings" => { "index" => main_hash } } : {}
     end
   end
 end
