@@ -15,7 +15,6 @@ module ElasticSchema::Schema
     def load_definitions
       analysis_files.each { |schema_file| require schema_file }
       schema_files.each { |schema_file| require schema_file }
-      schemas.each { |k, v| p v.to_hash }
       self
     end
 
@@ -28,7 +27,7 @@ module ElasticSchema::Schema
     def create_or_update_types(selected_schemas)
       selected_schemas.each do |schema_id, schema|
         index, type = schema_id.split('/')
-        body        = schema.to_hash[index]['mappings']
+        body        = schema.to_hash[index]
 
         if type_exists?(index, type)
           update_mapping(index, type, body)
@@ -40,25 +39,25 @@ module ElasticSchema::Schema
       end
     end
 
-    def update_mapping(index, type, mapping)
+    def update_mapping(index, type, schema)
       if must_reindex?(index, type)
-        migrate_data(index, type, mapping)
+        migrate_data(index, type, schema)
       else
         begin
           # We firstly try to update the index as it is, in case of solely new
           # fields being added
-          put_mapping(index, type, mapping)
+          put_mapping(index, type, schema)
         rescue Elasticsearch::Transport::Transport::Errors::BadRequest
           # We get here if we get MergeMappingException from Elasticsearch
-          migrate_data(index, type, mapping)
+          migrate_data(index, type, schema)
         end
       end
     end
 
     # Migrates data from index/type to a new index/type and create an alias to it
-    def migrate_data(index, type, mapping)
+    def migrate_data(index, type, schema)
       new_index = new_index_name(index)
-      create_type(new_index, type, mapping)
+      create_type(new_index, type, schema)
       copy_documents(type, index, new_index)
       delete_index_with_same_name_as_alias(index)
       alias_index(new_index, index)
@@ -171,10 +170,37 @@ module ElasticSchema::Schema
     # Get all the index/type in ES that diverge from the definitions
     def types_to_update
       schemas.select do |schema_id, schema|
-        index, type                = schema_id.split('/')
-        current_mapping            = fetch_mapping(index, type)
-        @actual_schemas[schema_id] = current_mapping
-        schema.mapping.to_hash.values.first != current_mapping.values.first
+        index, type    = schema_id.split('/')
+        current_schema = fetch_mapping(index, type)
+
+        if current_schema.any?
+          current_schema.values.first.update(fetch_settings(index).values.first)
+        end
+
+        @actual_schemas[schema_id] = current_schema
+        equal_schemas?(schema.to_hash.values.first, current_schema.values.first)
+      end
+    end
+
+    def equal_schemas?(schema_1, schema_2)
+      equal_mappings?(schema_1, schema_2) && equal_settings?(schema_1, schema_2)
+    end
+
+    def equal_mappings?(schema_1, schema_2)
+      schema_1['mappings'] == schema_2['mappings']
+    end
+
+    def equal_settings?(schema_1, schema_2)
+      settings_1 = schema_1['settings']['index']['analysis'] rescue {}
+      settings_2 = schema_2['settings']['index']['analysis'] rescue {}
+      settings_1 == settings_2
+    end
+
+    def fetch_settings(index)
+      begin
+        client.indices.get_settings(index: index)
+      rescue Elasticsearch::Transport::Transport::Errors::NotFound
+        {}
       end
     end
 

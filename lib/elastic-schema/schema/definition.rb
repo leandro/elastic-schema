@@ -6,8 +6,6 @@ module ElasticSchema::Schema
 
     @@definitions = {}
 
-    attr_reader :mapping
-
     def initialize(&block)
       @_field_chain = []
 
