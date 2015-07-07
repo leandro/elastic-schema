@@ -97,7 +97,7 @@ module ElasticSchema::Schema
     end
 
     def must_reindex?(index, type)
-      new_mapping = schemas["#{index}/#{type}"].mapping.to_hash[index]['mappings'][type]['properties'] rescue {}
+      new_mapping = schemas["#{index}/#{type}"].to_hash.values.first['mappings'][type]['properties'] rescue {}
       old_mapping = actual_schemas["#{index}/#{type}"].values.first['mappings'][type]['properties']
       new_mapping_fields = extract_field_names(new_mapping)
       old_mapping_fields = extract_field_names(old_mapping)
@@ -109,7 +109,10 @@ module ElasticSchema::Schema
         full_name = name.empty? ? key : "#{name}.#{key}"
 
         if value.is_a?(Hash)
-          value          = value['properties'] if value.keys == %w(properties)
+          if value.keys == %w(properties) || value.has_key?('type') && %w(nested object).include?(value['type'])
+            value     = value['properties']
+            full_name = name.empty? ? key : name
+          end
           expanded_names = extract_field_names(value, full_name)
         else
           full_name      = name
