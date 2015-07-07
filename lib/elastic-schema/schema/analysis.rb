@@ -36,8 +36,7 @@ module ElasticSchema::Schema
 
     def stringfy_symbols(hash)
       hash.inject({}) do |_hash, (key, value)|
-        value = value.to_s if value.is_a?(Symbol)
-        value = value.map { |item| item.is_a?(Symbol) ? item.to_s : item } if value.is_a?(Array)
+        value = value.is_a?(Array) ? value.map { |item| item.to_s } : value.to_s
         _hash.update(key.to_s => value)
       end
     end

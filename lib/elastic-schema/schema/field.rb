@@ -35,6 +35,9 @@ module ElasticSchema::Schema
       when 'date'
         attributes.update('format' => 'dateOptionalTime') if type == 'date'
         attributes.delete('index')
+      when *%w(integer long float double boolean null)
+        attributes.delete('index')
+        attributes.delete('analyzer')
       end
     end
   end

@@ -1,7 +1,7 @@
 require 'elasticsearch'
+require 'utils/hash'
 
 module ElasticSchema
-
   autoload :CLI, 'elastic-schema/cli'
   autoload :Command, 'elastic-schema/command'
 
@@ -14,5 +14,4 @@ module ElasticSchema
     autoload :Settings, 'elastic-schema/schema/settings'
     autoload :Analysis, 'elastic-schema/schema/analysis'
   end
-
 end

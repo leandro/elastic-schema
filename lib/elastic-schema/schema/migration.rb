@@ -19,7 +19,21 @@ module ElasticSchema::Schema
     end
 
     def run
-      create_or_update_types(types_to_update)
+      schemas_to_update = types_to_update
+      total_schemas     = schemas.size
+      needs_update      = schemas_to_update.size
+
+      if total_schemas > 0
+        if needs_update < 1
+          puts "Woo-hoo! Everything is already up-to-date!"
+        else
+          puts "Initiating schema updates: #{needs_update} out of #{total_schemas} will be updated."
+        end
+      else
+        puts "There are no schemas to be processed in the provided directory."
+      end
+
+      create_or_update_types(schemas_to_update)
     end
 
     private
@@ -46,7 +60,7 @@ module ElasticSchema::Schema
         begin
           # We firstly try to update the index as it is, in case of solely new
           # fields being added
-          put_mapping(index, type, schema)
+          put_mapping(index, type, schema['mappings'])
         rescue Elasticsearch::Transport::Transport::Errors::BadRequest
           # We get here if we get MergeMappingException from Elasticsearch
           migrate_data(index, type, schema)
@@ -83,17 +97,25 @@ module ElasticSchema::Schema
 
       puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
 
-      result        = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
-      bulk_template = { index: { _index: new_index, _type: type } }
+      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
+      bulk_template  = { index: { _index: new_index, _type: type } }
+      alias_name     = new_index.split("_")[0..-2].join("_")
+      fields_filter  = fields_whilelist(alias_name, type)
 
       while (result = client.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
         body = docs.map do |document|
                  bulk_item = bulk_template.dup
-                 bulk_item[:index].update(_id: document['_id'], data: document['_source'])
+                 source    = document['_source'].deep_slice(*fields_filter)
+                 bulk_item[:index].update(_id: document['_id'], data: source)
                  bulk_item
                end
         client.bulk(body: body)
       end
+    end
+
+    def fields_whilelist(alias_name, type)
+      mapping = schemas["#{alias_name}/#{type}"].to_hash.values.first['mappings'][type]['properties']
+      extract_field_names(mapping).map { |f| f.include?('.') ? f.split('.') : f }
     end
 
     def must_reindex?(index, type)
