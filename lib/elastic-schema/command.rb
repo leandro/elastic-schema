@@ -22,11 +22,11 @@ module ElasticSchema
     end
 
     def schema_files
-      Dir[schema_pattern].inject([]) { |files, schema_file| files << schema_file }
+      Dir[schema_pattern]
     end
 
     def analysis_files
-      Dir[analysis_pattern].inject([]) { |files, analysis_file| files << analysis_file }
+      Dir[analysis_pattern]
     end
 
     def schema_pattern
