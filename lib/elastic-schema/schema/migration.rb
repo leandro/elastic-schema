@@ -204,7 +204,7 @@ module ElasticSchema::Schema
         end
 
         @actual_schemas[schema_id] = current_schema
-        !equal_schemas?(schema.to_hash.values.first, current_schema.values.first)
+        !equal_schemas?(schema.to_hash.values.first, current_schema.values.first || {})
       end
     end
 
