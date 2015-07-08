@@ -130,14 +130,10 @@ module ElasticSchema::Schema
         full_name = name.empty? ? key : "#{name}.#{key}"
 
         if value.is_a?(Hash)
-          if value.keys == %w(properties) || value.has_key?('type') && %w(nested object).include?(value['type'])
-            value     = value['properties']
-            full_name = name.empty? ? key : name
-          end
+          full_name = name if key == 'properties'
           expanded_names = extract_field_names(value, full_name)
         else
-          full_name      = name
-          expanded_names = full_name
+          expanded_names = name
         end
 
         names.concat(Array(expanded_names))

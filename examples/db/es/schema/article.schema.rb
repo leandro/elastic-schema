@@ -3,8 +3,8 @@ ElasticSchema::Schema::Definition.new do
   type  :article
   analysis :default
 
-  field :title, :string, analyzer: :snowball
-  field :content, :string, analyzer: :snowball
+  field :title, :string, analyzer: :lowcase_word_delimiter
+  field :content, :string, analyzer: :lowcase_word_delimiter
   field :author do
     field :name do
       field :first_name, :string
