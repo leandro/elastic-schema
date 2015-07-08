@@ -22,14 +22,8 @@ module ElasticSchema::Schema
       @settings = Settings.new(analysis: name)
     end
 
-    def index(name = nil)
-      return if @index
-      @index = name
-    end
-
-    def type(name = nil)
-      return if @type
-      @type = name
+    def index(name)
+      @index = Index.new(name)
     end
 
     def field(name, type = :object, opts = {}, &block)
