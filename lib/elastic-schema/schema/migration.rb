@@ -39,12 +39,19 @@ module ElasticSchema::Schema
     private
 
     def create_or_update_types(selected_schemas)
-      selected_schemas.each do |schema_id, schema|
-        index, type = schema_id.split('/')
-        body        = schema.to_hash.values.first
+      selected_schemas.each do |index_name, schema|
+        schema_data    = schema.index.to_hash.values.first
+        new_index      = new_index_name(index_name)
+        index_settings = schema.index.to_hash.values.first
+
+        if index_exists?(index_name)
+          next unless must_create_new_index?(schema, index_name)
+          update_mappings(index_name, type, body)
+        else
+          create_index(new_index, index_settings)
+        end
 
         if type_exists?(index, type)
-          update_mapping(index, type, body)
         else
           new_index = new_index_name(index)
           create_type(new_index, type, body)
@@ -53,7 +60,7 @@ module ElasticSchema::Schema
       end
     end
 
-    def update_mapping(index, type, schema)
+    def update_mappings(index, type, schema)
       if must_reindex?(index, type)
         migrate_data(index, type, schema)
       else
@@ -69,13 +76,13 @@ module ElasticSchema::Schema
     end
 
     # Migrates data from index/type to a new index/type and create an alias to it
-    def migrate_data(index, type, schema)
-      new_index = new_index_name(index)
-      create_type(new_index, type, schema)
-      copy_documents(type, index, new_index)
-      delete_index_with_same_name_as_alias(index)
-      alias_index(new_index, index)
-      delete_older_indices(index)
+    def migrate_data(index_name, type, index_body)
+      new_index = new_index_name(index_name)
+      create_index(new_index, index_body)
+      copy_all_documents_between_indices(index_name, new_index)
+      delete_index_with_same_name_as_alias(index_name)
+      alias_index(new_index, index_name)
+      delete_older_indices(index_name)
     end
 
     def alias_index(index, alias_name)
@@ -92,7 +99,12 @@ module ElasticSchema::Schema
       delete_index(alias_name) if !alias_exists?(alias_name) && index_exists?(alias_name)
     end
 
-    def copy_documents(type, old_index, new_index)
+    def copy_all_documents_between_indices(old_index, new_index)
+      types = actual_schemas[old_index].values.first.values_at('mappings').keys
+      types.each { |type| copy_documents_for_type(type, old_index, new_index) }
+    end
+
+    def copy_documents_for_type(type, old_index, new_index)
       return unless (doc_count = documents_count(old_index, type)) > 0
 
       puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
@@ -115,6 +127,33 @@ module ElasticSchema::Schema
     def fields_whilelist(alias_name, type)
       mapping = schemas["#{alias_name}/#{type}"].to_hash.values.first['mappings'][type]['properties']
       extract_field_names(mapping).map { |f| f.include?('.') ? f.split('.') : f }
+    end
+
+    def must_create_new_index?(schema, index)
+      has_diverging_settings?(schema, index) || has_diverging_mappings?(schema, index)
+    end
+
+    def has_diverging_mappings?(schema, index)
+      old_mappings = actual_schemas[index].values.first.values_at('mappings')
+      new_mappings = schema.index.mappings.to_hash['mappings']
+
+      old_mappings.each do |type, old_mapping|
+        old_fields = old_mapping['properties']
+        new_fields = new_mappings[type]['properties'] rescue nil
+
+        next if new_fields.nil?
+
+        old_mapping_fields = extract_field_names(old_fields)
+        new_mapping_fields = extract_field_names(new_fields)
+        return true if (old_mapping_fields & new_mapping_fields) != old_mapping_fields
+      end
+    end
+
+    # For now we're only comparing analysis settings
+    def has_diverging_settings?(schema, index)
+      old_settings = actual_schemas[index].values.first.values_at('settings')['index']['analysis'] rescue {}
+      new_settings = schema.index.settings.to_hash['settings']['index']['analysis'] rescue {}
+      new_settings != old_settings
     end
 
     def must_reindex?(index, type)
@@ -158,14 +197,13 @@ module ElasticSchema::Schema
       client.indices.delete(index: index)
     end
 
-    def create_index(index, settings)
+    def create_index(index, body)
       puts "Creating index '#{index}'"
-      client.indices.create(index: index, body: { settings: settings })
+      client.indices.create(index: index, body: body)
     end
 
-    def create_type(index, type, schema)
-      create_index(index, schema['settings']) unless index_exists?(index)
-      put_mapping(index, type, schema['mappings'])
+    def create_type(index, type, mapping)
+      put_mapping(index, type, mapping)
     end
 
     def alias_exists?(alias_name)
@@ -191,15 +229,10 @@ module ElasticSchema::Schema
 
     # Get all the index/type in ES that diverge from the definitions
     def types_to_update
-      schemas.select do |schema_id, schema|
-        index, type    = schema_id.split('/')
-        current_schema = fetch_mapping(index, type)
+      schemas.select do |index_name, schema|
+        current_schema = fetch_index(index_name)
 
-        if current_schema.any?
-          current_schema.values.first.update(fetch_settings(index).values.first)
-        end
-
-        @actual_schemas[schema_id] = current_schema
+        @actual_schemas[index_name] = current_schema
         !equal_schemas?(schema.to_hash.values.first, current_schema.values.first || {})
       end
     end
@@ -218,17 +251,9 @@ module ElasticSchema::Schema
       settings_1 == settings_2
     end
 
-    def fetch_settings(index)
+    def fetch_index(index)
       begin
-        client.indices.get_settings(index: index)
-      rescue Elasticsearch::Transport::Transport::Errors::NotFound
-        {}
-      end
-    end
-
-    def fetch_mapping(index, type)
-      begin
-        client.indices.get_mapping(index: real_index_for(index), type: type)
+        client.indices.get(index: index)
       rescue Elasticsearch::Transport::Transport::Errors::NotFound
         {}
       end
