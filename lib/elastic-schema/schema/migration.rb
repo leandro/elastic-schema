@@ -33,29 +33,24 @@ module ElasticSchema::Schema
         puts "There are no schemas to be processed in the provided directory."
       end
 
-      create_or_update_types(schemas_to_update)
+      create_or_update_indices(schemas_to_update)
     end
 
     private
 
-    def create_or_update_types(selected_schemas)
+    def create_or_update_indices(selected_schemas)
       selected_schemas.each do |index_name, schema|
-        schema_data    = schema.index.to_hash.values.first
-        new_index      = new_index_name(index_name)
-        index_settings = schema.index.to_hash.values.first
+        index_body = schema.index.to_hash.values.first
 
         if index_exists?(index_name)
-          next unless must_create_new_index?(schema, index_name)
-          update_mappings(index_name, type, body)
+          if must_create_new_index?(schema, index_name)
+            migrate_data(index_name, index_body)
+          else
+            create_or_update_types(index_name, index_body)
+          end
         else
-          create_index(new_index, index_settings)
-        end
-
-        if type_exists?(index, type)
-        else
-          new_index = new_index_name(index)
-          create_type(new_index, type, body)
-          alias_index(new_index, index)
+          new_index = new_index_name(index_name)
+          create_index(new_index, index_body)
         end
       end
     end
@@ -76,7 +71,7 @@ module ElasticSchema::Schema
     end
 
     # Migrates data from index/type to a new index/type and create an alias to it
-    def migrate_data(index_name, type, index_body)
+    def migrate_data(index_name, index_body)
       new_index = new_index_name(index_name)
       create_index(new_index, index_body)
       copy_all_documents_between_indices(index_name, new_index)
@@ -134,7 +129,7 @@ module ElasticSchema::Schema
     end
 
     def has_diverging_mappings?(schema, index)
-      old_mappings = actual_schemas[index].values.first.values_at('mappings')
+      old_mappings = actual_schemas[index].values.first['mappings']
       new_mappings = schema.index.mappings.to_hash['mappings']
 
       old_mappings.each do |type, old_mapping|
@@ -147,11 +142,12 @@ module ElasticSchema::Schema
         new_mapping_fields = extract_field_names(new_fields)
         return true if (old_mapping_fields & new_mapping_fields) != old_mapping_fields
       end
+      return false
     end
 
     # For now we're only comparing analysis settings
     def has_diverging_settings?(schema, index)
-      old_settings = actual_schemas[index].values.first.values_at('settings')['index']['analysis'] rescue {}
+      old_settings = actual_schemas[index].values.first['settings']['index']['analysis'] rescue {}
       new_settings = schema.index.settings.to_hash['settings']['index']['analysis'] rescue {}
       new_settings != old_settings
     end
@@ -233,22 +229,14 @@ module ElasticSchema::Schema
         current_schema = fetch_index(index_name)
 
         @actual_schemas[index_name] = current_schema
-        !equal_schemas?(schema.to_hash.values.first, current_schema.values.first || {})
+        !has_same_index_structures?(schema.to_hash.values.first, current_schema.values.first || {})
       end
     end
 
-    def equal_schemas?(schema_1, schema_2)
-      equal_mappings?(schema_1, schema_2) && equal_settings?(schema_1, schema_2)
-    end
-
-    def equal_mappings?(schema_1, schema_2)
-      schema_1['mappings'] == schema_2['mappings']
-    end
-
-    def equal_settings?(schema_1, schema_2)
-      settings_1 = schema_1['settings']['index']['analysis'] rescue {}
-      settings_2 = schema_2['settings']['index']['analysis'] rescue {}
-      settings_1 == settings_2
+    def has_same_index_structures?(old_index_body, new_index_body)
+      old_index_body = old_index_body.deep_slice('mappings', %w(settings index analysis)) rescue {}
+      new_index_body = new_index_body.deep_slice('mappings', %w(settings index analysis)) rescue {}
+      old_index_body == new_index_body
     end
 
     def fetch_index(index)
