@@ -13,6 +13,7 @@ module ElasticSchema::Schema
 
     def << field
       fail FieldAlreadyDefined.new("'#{field.full_name}' already exists.") if find(field.name)
+      field.parent = self
       fields << field
     end
 

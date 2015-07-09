@@ -1,22 +1,23 @@
 module ElasticSchema::Schema
   class Type
-    attr_reader :name, :index
+    attr_reader :name, :mappings, :fields
 
-    def initialize(name, index, &block)
-      @name  = name
-      @index = index
+    def initialize(name, mappings, &block)
+      @name     = name
+      @mappings = mappings
       instance_eval(&block)
     end
 
-    def field(field_name, type = :object, opts = {}, &block)
-      @mapping ||= Mapping.new(index.name, name)
-      field_name = field_name.to_s
-      field_type = field_type.to_s
+    def field(field_name, field_type = 'object', opts = {}, &block)
+      fields << Field.new(field_name.to_s, field_type.to_s, opts, &block)
+    end
 
-      @_field_chain << field_name
-      @mapping.add_field(@_field_chain.join("."), field_type, opts)
-      instance_eval(&block) if block_given?
-      @_field_chain.pop
+    def fields
+      @fields ||= FieldsSet.new(self)
+    end
+
+    def parent
+      mappings
     end
   end
 end

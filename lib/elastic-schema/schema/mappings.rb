@@ -1,12 +1,20 @@
 module ElasticSchema::Schema
 
-  class Mapping
+  class Mappings
+    TypeAlreadyDefined = Class.new(StandardError)
 
-    attr_reader :index, :type
+    attr_reader :index, :types
 
-    def initialize(index, type)
-      @index = index.to_s
-      @type  = type.to_s
+    def initialize(index)
+      @index = index
+      @types = {}
+    end
+
+    def type(name, &block)
+      if types.has_key?(name)
+        fail TypeAlreadyDefined.new("There is already a schema defined for ype '#{name}' in index '#{name}'.")
+      end
+      @types[name] = Type.new(name, self, &block)
     end
 
     def add_field(field_name, type = 'object', attrs = {})
@@ -21,10 +29,6 @@ module ElasticSchema::Schema
 
     def full_name
       "#{index}/#{type}"
-    end
-
-    def fields
-      @fields ||= FieldsSet.new(self)
     end
 
     def to_hash
