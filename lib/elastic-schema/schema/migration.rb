@@ -56,27 +56,12 @@ module ElasticSchema::Schema
       end
     end
 
-    def create_or_update_types(schema, index_body)
+    def create_or_update_types(schema, types)
       mappings = schema.index.mappings.to_hash['mappings']
 
       types.each do |type|
         mapping = mappings[type]
         put_mapping(schema.index.name, type, { type => mapping })
-      end
-    end
-
-    def update_mappings(index, type, schema)
-      if must_reindex?(index, type)
-        migrate_data(index, type, schema)
-      else
-        begin
-          # We firstly try to update the index as it is, in case of solely new
-          # fields being added
-          put_mapping(index, type, schema['mappings'])
-        rescue Elasticsearch::Transport::Transport::Errors::BadRequest
-          # We get here if we get MergeMappingException from Elasticsearch
-          migrate_data(index, type, schema)
-        end
       end
     end
 
@@ -190,14 +175,6 @@ module ElasticSchema::Schema
       new_settings != old_settings
     end
 
-    def must_reindex?(index, type)
-      new_mapping = schemas["#{index}/#{type}"].to_hash.values.first['mappings'][type]['properties'] rescue {}
-      old_mapping = actual_schemas["#{index}/#{type}"].values.first['mappings'][type]['properties']
-      new_mapping_fields = extract_field_names(new_mapping)
-      old_mapping_fields = extract_field_names(old_mapping)
-      (old_mapping_fields & new_mapping_fields) != old_mapping_fields
-    end
-
     def extract_field_names(mapping, name = '')
       mapping.inject([]) do |names, (key, value)|
         full_name = name.empty? ? key : "#{name}.#{key}"
@@ -221,11 +198,6 @@ module ElasticSchema::Schema
       client.indices.get_alias(name: alias_name)
     end
 
-    def delete_alias(alias_name)
-      puts "Deleting index alias '#{alias_name}'"
-      client.indices.delete_alias(alias_name)
-    end
-
     def delete_index(index)
       puts "Deleting index '#{index}'"
       client.indices.delete(index: index)
@@ -236,20 +208,12 @@ module ElasticSchema::Schema
       client.indices.create(index: index, body: body)
     end
 
-    def create_type(index, type, mapping)
-      put_mapping(index, type, mapping)
-    end
-
     def alias_exists?(alias_name)
       client.indices.exists_alias(name: alias_name)
     end
 
     def index_exists?(index)
       client.indices.exists(index: index)
-    end
-
-    def type_exists?(index, type)
-      client.indices.exists_type(index: index, type: type)
     end
 
     def put_mapping(index, type, mapping)
@@ -264,8 +228,7 @@ module ElasticSchema::Schema
     # Get all the index/type in ES that diverge from the definitions
     def types_to_update
       schemas.select do |index_name, schema|
-        current_schema = fetch_index(index_name)
-
+        current_schema              = fetch_index(index_name)
         @actual_schemas[index_name] = current_schema
         !has_same_index_structures?(schema.to_hash.values.first, current_schema.values.first || {})
       end
@@ -285,18 +248,8 @@ module ElasticSchema::Schema
       end
     end
 
-    # For cases where {index} might be an alias instead
-    def real_index_for(index)
-      begin
-        client.indices.get_alias(name: index).keys.first
-      rescue Elasticsearch::Transport::Transport::Errors::NotFound
-        index
-      end
-    end
-
     def schemas
       @schemas ||= ElasticSchema::Schema::Definition.definitions
     end
   end
-
 end
