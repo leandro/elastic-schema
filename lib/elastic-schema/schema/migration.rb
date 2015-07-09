@@ -52,6 +52,7 @@ module ElasticSchema::Schema
         else
           new_index = new_index_name(index_name)
           create_index(new_index, index_body)
+          alias_index(new_index, index_name)
         end
       end
     end
@@ -205,6 +206,10 @@ module ElasticSchema::Schema
 
     def create_index(index, body)
       puts "Creating index '#{index}'"
+
+      types = body["mappings"].keys rescue []
+      types.each { |type| puts "Creating type '#{type}' in index '#{index}'" }
+
       client.indices.create(index: index, body: body)
     end
 
@@ -217,7 +222,7 @@ module ElasticSchema::Schema
     end
 
     def put_mapping(index, type, mapping)
-      puts "Creating/updating type '#{type}' in index/alias '#{index}'"
+      puts "Creating/updating type '#{type}' in index '#{index}'"
       client.indices.put_mapping(index: index, type: type, body: mapping)
     end
 
