@@ -10,13 +10,14 @@ module ElasticSchema::Schema
       @children   = FieldsSet.new(self)
       @attributes = attrs.inject({}) { |_attrs, (attr, value)| _attrs.update(attr.to_s => value.to_s) }
       field_type  = (block_given? ? 'object' : 'string') if field_type.nil?
-      @type       = field_type
+      @type       = field_type.to_s
 
       filter_attributes_for_special_cases
+      instance_eval(&block) if block_given?
     end
 
-    def find(field_name)
-      children.find(field_name)
+    def field(field_name, field_type = nil, opts = {}, &block)
+      children << Field.new(field_name, field_type, opts, &block)
     end
 
     def full_name

@@ -8,8 +8,8 @@ module ElasticSchema::Schema
       instance_eval(&block)
     end
 
-    def field(field_name, field_type = 'object', opts = {}, &block)
-      fields << Field.new(field_name.to_s, field_type.to_s, opts, &block)
+    def field(field_name, field_type = nil, opts = {}, &block)
+      fields << Field.new(field_name, field_type, opts, &block)
     end
 
     def fields
@@ -18,6 +18,10 @@ module ElasticSchema::Schema
 
     def parent
       mappings
+    end
+
+    def to_hash
+      { name => fields.to_hash }
     end
   end
 end
