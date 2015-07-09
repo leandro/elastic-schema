@@ -46,12 +46,22 @@ module ElasticSchema::Schema
           if must_create_new_index?(schema, index_name)
             migrate_data(index_name, index_body)
           else
-            create_or_update_types(index_name, index_body)
+            types = updatable_or_creatable_types(schema, index_name)
+            create_or_update_types(schema, types)
           end
         else
           new_index = new_index_name(index_name)
           create_index(new_index, index_body)
         end
+      end
+    end
+
+    def create_or_update_types(schema, index_body)
+      mappings = schema.index.mappings.to_hash['mappings']
+
+      types.each do |type|
+        mapping = mappings[type]
+        put_mapping(schema.index.name, type, { type => mapping })
       end
     end
 
@@ -95,7 +105,7 @@ module ElasticSchema::Schema
     end
 
     def copy_all_documents_between_indices(old_index, new_index)
-      types = actual_schemas[old_index].values.first.values_at('mappings').keys
+      types = actual_schemas[old_index].values.first['mappings'].keys
       types.each { |type| copy_documents_for_type(type, old_index, new_index) }
     end
 
@@ -120,15 +130,29 @@ module ElasticSchema::Schema
     end
 
     def fields_whilelist(alias_name, type)
-      mapping = schemas["#{alias_name}/#{type}"].to_hash.values.first['mappings'][type]['properties']
+      mapping = schemas[alias_name].to_hash.values.first['mappings'][type]['properties']
       extract_field_names(mapping).map { |f| f.include?('.') ? f.split('.') : f }
     end
 
-    def must_create_new_index?(schema, index)
-      has_diverging_settings?(schema, index) || has_diverging_mappings?(schema, index)
+    def updatable_or_creatable_types(schema, index_name)
+      old_mappings = actual_schemas[index_name].values.first['mappings']
+      new_mappings = schema.index.mappings.to_hash['mappings']
+
+      new_mappings.keys.select do |type|
+        old_fields         = old_mappings[type]['properties'] rescue {}
+        new_fields         = new_mappings[type]['properties']
+        old_mapping_fields = extract_field_names(old_fields)
+        new_mapping_fields = extract_field_names(new_fields)
+
+        (new_mapping_fields - old_mapping_fields).any?
+      end
     end
 
-    def has_diverging_mappings?(schema, index)
+    def must_create_new_index?(schema, index)
+      has_diverging_settings?(schema, index) || has_conflicting_mappings?(schema, index)
+    end
+
+    def has_conflicting_mappings?(schema, index)
       old_mappings = actual_schemas[index].values.first['mappings']
       new_mappings = schema.index.mappings.to_hash['mappings']
 
@@ -140,8 +164,22 @@ module ElasticSchema::Schema
 
         old_mapping_fields = extract_field_names(old_fields)
         new_mapping_fields = extract_field_names(new_fields)
-        return true if (old_mapping_fields & new_mapping_fields) != old_mapping_fields
+        shared_fields      = old_mapping_fields & new_mapping_fields
+
+        return true if shared_fields != old_mapping_fields
+
+        old_mapping_fields = old_mapping_fields.map do |full_name|
+          full_name = full_name.split('.').join('.properties.').split('.')
+          full_name.size == 1 ? full_name.first : full_name
+        end
+        new_mapping_fields = new_mapping_fields.map do |full_name|
+          full_name = full_name.split('.').join('.properties.').split('.')
+          full_name.size == 1 ? full_name.first : full_name
+        end
+
+        return true if old_fields.deep_slice(*old_mapping_fields) != new_fields.deep_slice(*new_mapping_fields)
       end
+
       return false
     end
 
