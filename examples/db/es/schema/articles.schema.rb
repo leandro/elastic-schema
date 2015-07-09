@@ -16,6 +16,7 @@ ElasticSchema::Schema::Definition.new do
   end
 
   type :comment do
+    field :article_id, :integer
     field :content, :string, analyzer: :lowcase_word_delimiter
     field :author do
       field :name do
