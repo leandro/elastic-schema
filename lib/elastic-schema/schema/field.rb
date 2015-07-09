@@ -1,22 +1,23 @@
 module ElasticSchema::Schema
 
   class Field
-    attr_reader :name, :type, :children, :attributes, :parent
+    attr_accessor :parent
+    attr_reader :name, :type, :children, :attributes
 
-    def initialize(field_name, type = 'object', attrs)
+    def initialize(field_name, field_type = nil, attrs, &block)
       @name       = field_name.to_s
-      @type       = type.to_s
       @parent     = attrs.delete(:parent)
       @children   = FieldsSet.new(self)
-      @attributes = attrs.inject({}) do |_attrs, (attr, value)|
-                      value = value.to_s if value.is_a?(Symbol)
-                      _attrs.update(attr.to_s => value)
-                    end
+      @attributes = attrs.inject({}) { |_attrs, (attr, value)| _attrs.update(attr.to_s => value.to_s) }
+      field_type  = (block_given? ? 'object' : 'string') if field_type.nil?
+      @type       = field_type.to_s
+
       filter_attributes_for_special_cases
+      instance_eval(&block) if block_given?
     end
 
-    def find(field_name)
-      @children.find(field_name)
+    def field(field_name, field_type = nil, opts = {}, &block)
+      children << Field.new(field_name, field_type, opts, &block)
     end
 
     def full_name

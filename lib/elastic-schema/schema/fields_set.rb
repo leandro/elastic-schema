@@ -12,6 +12,7 @@ module ElasticSchema::Schema
     end
 
     def << field
+      field.parent = self
       fail FieldAlreadyDefined.new("'#{field.full_name}' already exists.") if find(field.name)
       fields << field
     end
@@ -20,16 +21,12 @@ module ElasticSchema::Schema
       fields.bsearch { |field| field.name == field_name }
     end
 
-    def empty?
-      fields.empty?
-    end
-
     def full_name
       parent.full_name
     end
 
     def to_hash
-      return {} if empty?
+      return {} if fields.empty?
       { 'properties' => fields.inject({}) { |_fields, field| _fields.update(field.to_hash) } }
     end
   end

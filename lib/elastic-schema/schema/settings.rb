@@ -1,9 +1,11 @@
 module ElasticSchema::Schema
   class Settings
     attr_accessor :analysis
+    attr_reader   :index
 
-    def initialize(opts = {})
-      opts = opts.inject({}) { |_opts, (key, value)| _opts.update(key.to_s => value) }
+    def initialize(index, opts = {})
+      @index = index
+      opts   = opts.inject({}) { |_opts, (key, value)| _opts.update(key.to_s => value) }
 
       %w(analysis).each do |attr|
         send(:"#{attr}=", opts[attr]) if opts.has_key?(attr)
