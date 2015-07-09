@@ -20,7 +20,7 @@ module ElasticSchema::Schema
       main_hash = {}
       main_hash.update(mappings.to_hash) if mappings
       main_hash.update(settings.to_hash) if settings && settings.to_hash.any?
-      { name => main_hash }
+      { name.to_s => main_hash }
     end
   end
 end

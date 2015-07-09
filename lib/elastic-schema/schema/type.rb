@@ -21,7 +21,7 @@ module ElasticSchema::Schema
     end
 
     def to_hash
-      { name => fields.to_hash }
+      { name.to_s => fields.to_hash }
     end
   end
 end
