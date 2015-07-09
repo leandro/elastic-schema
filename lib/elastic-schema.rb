@@ -11,7 +11,9 @@ module ElasticSchema
     autoload :Field, 'elastic-schema/schema/field'
     autoload :FieldsSet, 'elastic-schema/schema/fields_set'
     autoload :Mappings, 'elastic-schema/schema/mappings'
+    autoload :Type, 'elastic-schema/schema/type'
     autoload :Settings, 'elastic-schema/schema/settings'
     autoload :Analysis, 'elastic-schema/schema/analysis'
+    autoload :Index, 'elastic-schema/schema/Index'
   end
 end

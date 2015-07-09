@@ -8,8 +8,6 @@ module ElasticSchema::Schema
     @@definitions = {}
 
     def initialize(&block)
-      @_field_chain = []
-
       instance_eval(&block)
 
       if @@definitions[definition_id]
@@ -20,7 +18,8 @@ module ElasticSchema::Schema
     end
 
     def analysis(name)
-      @settings = Settings.new(analysis: name)
+      fail NoIndexDefined.new("There is not index defined yet.") if index.nil?
+      index.analysis(name)
     end
 
     def type(name, &block)
@@ -34,10 +33,7 @@ module ElasticSchema::Schema
     end
 
     def to_hash
-      #main_hash = {}
-      #main_hash.update(@mapping.to_hash) if @mapping
-      #main_hash.update(@settings.to_hash) if @settings && @settings.to_hash.any?
-      { index.name => index }
+      index.to_hash
     end
 
     def self.definitions
@@ -47,7 +43,7 @@ module ElasticSchema::Schema
     private
 
     def definition_id
-      index.name
+      index.name.to_s
     end
   end
 
