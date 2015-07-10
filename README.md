@@ -1,6 +1,6 @@
 ## Description
 
-A stateful way to approach Elasticsearch document mappings and data migrations.
+A declarative way to approach Elasticsearch document mappings and data migrations/reindexing.
 
 The idea is to provide an easy and versionable way to register the mappings of your Elasticsearch indices and types.
 Once any of the mappings and/or settings suffers any change by a developer, this tool kit will provide you means to keep your running elastic search server up-to-date regarding the recent changes.
