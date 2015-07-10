@@ -14,6 +14,6 @@ module ElasticSchema
     autoload :Type,       'elastic-schema/schema/type'
     autoload :Settings,   'elastic-schema/schema/settings'
     autoload :Analysis,   'elastic-schema/schema/analysis'
-    autoload :Index,      'elastic-schema/schema/Index'
+    autoload :Index,      'elastic-schema/schema/index'
   end
 end
