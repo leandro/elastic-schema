@@ -76,7 +76,7 @@ And also:
 
 Then, run bundle install in your app root directory and run:
 
-    $ eschema -h 127.0.0.1:9200 -s db/es/ create
+    $ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
     Initiating schema updates: 1 out of 1 will be updated.
     Creating index 'articles_v1436452769'
     Creating type 'article' in index 'articles_v1436452769'
@@ -99,7 +99,7 @@ Now, for instance, you change the analyzer for the 'content' field in your 'comm
 
 And then runs again the command. And you'll have this nice output:
 
-    $ eschema -h 127.0.0.1:9200 -s db/es/ create
+    $ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
     Initiating schema updates: 1 out of 1 will be updated.
     Creating index 'articles_v1436453128'
     Creating type 'article' in index 'articles_v1436453128'
