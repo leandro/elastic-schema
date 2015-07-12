@@ -11,107 +11,129 @@ The default strategy adopted by this tool is to create a new index with temporar
 
 Go to your Ruby project where you Gemfile is located:
 
-    $ cd ~/projects/my-ruby-project
-    $ vim Gemfile
+```shell
+$ cd ~/projects/my-ruby-project
+$ vim Gemfile
+```
 
 Add the following line to your Gemfile
 
-    gem "elastic-schema", :git => "git://github.com/leandro/elastic-schema.git"
+```ruby
+gem "elastic-schema", :git => "git://github.com/leandro/elastic-schema.git"
+```
 
 Choose a directory where you're going to put your Elasticsearch schemas. Or create one for yourself:
 
-    $ mkdir -p db/es/
+```shell
+$ mkdir -p db/es/
+```
 
 In order to see a working example, create the following file in the given your chosen directory:
 
-    vim ./db/es/default.analysis.rb
--
+```shell
+vim ./db/es/default.analysis.rb
+```
 
-    ElasticSchema::Schema::Analysis.new do
-      name :default
+```ruby
+ElasticSchema::Schema::Analysis.new do
+  name :default
 
-      filter :word_filter, { type: :word_delimiter }
-      analyzer :lowcase_word_delimiter, {
-        type:      :custom,
-        tokenizer: :standard,
-        filter:    %i(lowercase asciifolding word_filter)
-      }
-    end
+  filter :word_filter, { type: :word_delimiter }
+  analyzer :lowcase_word_delimiter, {
+    type:      :custom,
+    tokenizer: :standard,
+    filter:    %i(lowercase asciifolding word_filter)
+  }
+end
+```
 
 And also:
 
-    vim ./db/es/articles.schema.rb
--
+```shell
+vim ./db/es/articles.schema.rb
+```
 
-    ElasticSchema::Schema::Definition.new do
-      index    :articles
-      analysis :default
+```ruby
+ElasticSchema::Schema::Definition.new do
+  index    :articles
+  analysis :default
 
-      type :article do
-        field :title, :string, analyzer: :lowcase_word_delimiter
-        field :content, :string, analyzer: :lowcase_word_delimiter
-        field :author do
-          field :name do
-            field :first_name, :string
-            field :last_name, :string
-          end
-          field :email, :string, index: :not_analyzed
-        end
-        field :indexed_at, :date, index: :not_analyzed
+  type :article do
+    field :title, :string, analyzer: :lowcase_word_delimiter
+    field :content, :string, analyzer: :lowcase_word_delimiter
+    field :author do
+      field :name do
+        field :first_name, :string
+        field :last_name, :string
       end
-
-      type :comment do
-        field :article_id, :integer
-        field :content, :string, analyzer: :lowcase_word_delimiter
-        field :author do
-          field :name do
-            field :first_name, :string
-            field :last_name, :string
-          end
-          field :email, :string, index: :not_analyzed
-        end
-        field :indexed_at, :date, index: :not_analyzed
-      end
+      field :email, :string, index: :not_analyzed
     end
+    field :indexed_at, :date, index: :not_analyzed
+  end
+
+  type :comment do
+    field :article_id, :integer
+    field :content, :string, analyzer: :lowcase_word_delimiter
+    field :author do
+      field :name do
+        field :first_name, :string
+        field :last_name, :string
+      end
+      field :email, :string, index: :not_analyzed
+    end
+    field :indexed_at, :date, index: :not_analyzed
+  end
+end
+```
 
 Then, run bundle install in your app root directory and run:
 
-    $ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
-    Initiating schema updates: 1 out of 1 will be updated.
-    Creating index 'articles_v1436452769'
-    Creating type 'article' in index 'articles_v1436452769'
-    Creating type 'comment' in index 'articles_v1436452769'
-    Creating alias 'articles' to index 'articles_v1436452769'
+```shell
+$ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
+Initiating schema updates: 1 out of 1 will be updated.
+Creating index 'articles_v1436452769'
+Creating type 'article' in index 'articles_v1436452769'
+Creating type 'comment' in index 'articles_v1436452769'
+Creating alias 'articles' to index 'articles_v1436452769'
+```
 
 And lets say you have some documents inside the index later on:
 
-    curl -XPUT http://127.0.0.1:9200/articles/article/1 -d '{"title": "Article A", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
-    curl -XPUT http://127.0.0.1:9200/articles/article/2 -d '{"title": "Article B", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
-    curl -XPUT http://127.0.0.1:9200/articles/article/3 -d '{"title": "Article C", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
-    curl -XPUT http://127.0.0.1:9200/articles/comment/1 -d '{"article_id": 1, "content": "First comment.", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
-    curl -XPUT http://127.0.0.1:9200/articles/comment/2 -d '{"article_id": 1, "content": "Second comment.", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+```shell
+curl -XPUT http://127.0.0.1:9200/articles/article/1 -d '{"title": "Article A", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+curl -XPUT http://127.0.0.1:9200/articles/article/2 -d '{"title": "Article B", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+curl -XPUT http://127.0.0.1:9200/articles/article/3 -d '{"title": "Article C", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+curl -XPUT http://127.0.0.1:9200/articles/comment/1 -d '{"article_id": 1, "content": "First comment.", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+curl -XPUT http://127.0.0.1:9200/articles/comment/2 -d '{"article_id": 1, "content": "Second comment.", "author": {"name": {"first_name": "Leandro", "last_name": "Camargo"}}, "indexed_at": "2015-07-08"}'
+```
 
 Now, for instance, you change the analyzer for the 'content' field in your 'comment' type schema:
 
-    # ...
-    field :content, :string, analyzer: :snowball
-    # ...
+```ruby
+# ...
+field :content, :string, analyzer: :snowball
+# ...
+```
 
 And then runs again the command. And you'll have this nice output:
 
-    $ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
-    Initiating schema updates: 1 out of 1 will be updated.
-    Creating index 'articles_v1436453128'
-    Creating type 'article' in index 'articles_v1436453128'
-    Creating type 'comment' in index 'articles_v1436453128'
-    Migrating 3 documents from type 'article' in index 'articles' to index 'articles_v1436453128'
-    Migrating 2 documents from type 'comment' in index 'articles' to index 'articles_v1436453128'
-    Creating alias 'articles' to index 'articles_v1436453128'
-    Deleting index 'articles_v1436452769'
+```shell
+$ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
+Initiating schema updates: 1 out of 1 will be updated.
+Creating index 'articles_v1436453128'
+Creating type 'article' in index 'articles_v1436453128'
+Creating type 'comment' in index 'articles_v1436453128'
+Migrating 3 documents from type 'article' in index 'articles' to index 'articles_v1436453128'
+Migrating 2 documents from type 'comment' in index 'articles' to index 'articles_v1436453128'
+Creating alias 'articles' to index 'articles_v1436453128'
+Deleting index 'articles_v1436452769'
+```
 
 For further information just run:
 
-    eschema --help
+```shell
+bundle exec eschema --help
+```
 
 ## Important observations
 
