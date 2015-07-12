@@ -119,6 +119,12 @@ For further information just run:
 * The same goes for analysis settings, where it must match the '*.analysis.rb' or just naming it as 'analysis.rb' will also work.
 * If you have indices with multiple types in it, make sure your index schema definition has **all the types definitions** in it, otherwise the missing types will be lost during the migration, given in most cases a new index will be created and the old one will be deleted.
 
+## Missing parts
+
+* Allow to make old index deletion to be something optional
+* Handle multi-tenant indices arrangements
+* Add tests
+
 ## Contribute
 
 If you want to contribute, please fork this project, make the changes and create a Pull Request mentioning me.
