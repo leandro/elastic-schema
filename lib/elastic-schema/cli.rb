@@ -15,9 +15,8 @@ module ElasticSchema
 
       # Default options values
       @options = {
-        root:       Dir.pwd,
-        schema_dir: 'db/es/schema',
-        host:       '127.0.0.1:9200'
+        root: Dir.pwd,
+        host: '127.0.0.1:9200'
       }
 
       parse!
@@ -30,14 +29,20 @@ module ElasticSchema
         opts.separator ""
         opts.separator "Setting options:"
 
-        opts.on("-r", "--root PATH",
-                "set app root directory (default: #{@options[:root]})")                       { |root| @options[:root] = root }
+        opts.on("-a", "--analysis_file FILE",
+                "define the analysis file to be used (overwritten by -d)") { |analysis_file| @options[:analysis_file] = analysis_file }
 
-        opts.on("-s", "--schema_dir DIR",
-                "set directory where schema files are (default: #{@options[:schema_dir]})")   { |schema_dir| @options[:schema_dir] = schema_dir }
+        opts.on("-d", "--schema_dir DIR",
+                "set directory where schema and analysis files are") { |schema_dir| @options[:schema_dir] = schema_dir }
+
+        opts.on("-f", "--schema_file FILE",
+                "define one fingle schema file to be used (overwritten by -d)") { |schema_file| @options[:schema_file] = schema_file }
 
         opts.on("-h", "--host HOST",
                 "set address:port to connect to Elasticsearch (default: #{@options[:host]})") { |host| @options[:host] = host }
+
+        opts.on("-r", "--root PATH",
+                "set app root directory (default: #{@options[:root]})") { |root| @options[:root] = root }
 
       end
     end
@@ -64,7 +69,7 @@ module ElasticSchema
     end
 
     def run_command
-      Command.new(@options[:host], @options[:root], @options[:schema_dir]).run(@command)
+      Command.new(@options).run(@command)
     end
   end
 end

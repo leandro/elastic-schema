@@ -89,7 +89,7 @@ end
 Then, run bundle install in your app root directory and run:
 
 ```shell
-$ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
+$ bundle exec eschema -h 127.0.0.1:9200 -d db/es/ create
 Initiating schema updates: 1 out of 1 will be updated.
 Creating index 'articles_v1436452769'
 Creating type 'article' in index 'articles_v1436452769'
@@ -118,7 +118,7 @@ field :content, :string, analyzer: :snowball
 And then runs again the command. And you'll have this nice output:
 
 ```shell
-$ bundle exec eschema -h 127.0.0.1:9200 -s db/es/ create
+$ bundle exec eschema -h 127.0.0.1:9200 -d db/es/ create
 Initiating schema updates: 1 out of 1 will be updated.
 Creating index 'articles_v1436453128'
 Creating type 'article' in index 'articles_v1436453128'
@@ -129,7 +129,7 @@ Creating alias 'articles' to index 'articles_v1436453128'
 Deleting index 'articles_v1436452769'
 ```
 
-For further information just run:
+In case you want to specify one schema file at a time you can use `-f` (for schema file) and `-a` (for analysis file) instead of using `-d`. For further information just run:
 
 ```shell
 bundle exec eschema --help
