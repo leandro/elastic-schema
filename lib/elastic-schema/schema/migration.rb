@@ -100,11 +100,11 @@ module ElasticSchema::Schema
 
       puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
 
-      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '5m', size: 1000
+      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '1m', size: 1000
       alias_name     = new_index.split("_")[0..-2].join("_")
       fields_filter  = fields_whilelist(alias_name, type)
 
-      while (result = client.scroll(scroll_id: result['_scroll_id'], scroll: '5m')) && (docs = result['hits']['hits']).any?
+      while (result = client.scroll(scroll_id: result['_scroll_id'], scroll: '1m')) && (docs = result['hits']['hits']).any?
         body = docs.map do |document|
                  bulk_item = { index: { _index: new_index, _type: type } }
                  source    = document['_source'].deep_slice(*fields_filter)
