@@ -235,7 +235,7 @@ module ElasticSchema::Schema
       schemas.select do |index_name, schema|
         current_schema              = fetch_index(index_name)
         @actual_schemas[index_name] = current_schema
-        !has_same_index_structures?(schema.to_hash.values.first, current_schema.values.first || {})
+        !has_same_index_structures?(current_schema.values.first || {}, schema.to_hash.values.first)
       end
     end
 

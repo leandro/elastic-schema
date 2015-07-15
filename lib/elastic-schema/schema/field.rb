@@ -8,7 +8,7 @@ module ElasticSchema::Schema
       @name       = field_name.to_s
       @parent     = attrs.delete(:parent)
       @children   = FieldsSet.new(self)
-      @attributes = attrs.deep_stringify_keys.deep_transform_values { |v| v.to_s }
+      @attributes = normalize_attributes(attrs)
       field_type  = (block_given? ? 'object' : 'string') if field_type.nil?
       @type       = field_type.to_s
 
@@ -31,6 +31,11 @@ module ElasticSchema::Schema
 
     private
 
+    def normalize_attributes(attrs)
+      value_converter = ->(v) { [TrueClass, FalseClass, NilClass].include?(v.class) ? v : v.to_s }
+      attrs.deep_stringify_keys.deep_transform_values(&value_converter)
+    end
+
     def filter_attributes_for_special_cases
       case type
       when 'date'
@@ -39,8 +44,25 @@ module ElasticSchema::Schema
       when *%w(integer long float double boolean null)
         attributes.delete('index')
         attributes.delete('analyzer')
+      when 'attachment'
+        @attributes = default_attachment_attributes.deep_merge(attributes)
       end
     end
-  end
 
+    def default_attachment_attributes
+      {
+        "fields" => {
+          "file"           => { "type" => "string" },
+          "author"         => { "type" => "string" },
+          "title"          => { "type" => "string" },
+          "name"           => { "type" => "string" },
+          "date"           => { "type" => "date", "format" => "dateOptionalTime" },
+          "keywords"       => { "type" => "string" },
+          "content_type"   => { "type" => "string" },
+          "content_length" => { "type" => "integer" },
+          "language"       => { "type" => "string" }
+        }
+      }
+    end
+  end
 end
