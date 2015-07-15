@@ -5,6 +5,7 @@ class Hash
         inner_hash = new_hash.include?(key.first) ? new_hash[key.first] : {}
         inner_keys = key[1..-1]
         inner_keys = inner_keys.first if inner_keys.size == 1
+        next new_hash unless self[key.first].is_a?(Hash)
         inner_hash.deep_merge!(self[key.first].deep_slice(inner_keys))
         new_hash.update(key.first => inner_hash)
       else
