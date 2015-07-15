@@ -5,7 +5,7 @@ module ElasticSchema::Schema
 
     def initialize(index, opts = {})
       @index = index
-      opts   = opts.inject({}) { |_opts, (key, value)| _opts.update(key.to_s => value) }
+      opts.deep_stringify_keys!
 
       %w(analysis).each do |attr|
         send(:"#{attr}=", opts[attr]) if opts.has_key?(attr)

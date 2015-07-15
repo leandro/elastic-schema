@@ -8,7 +8,7 @@ module ElasticSchema::Schema
       @name       = field_name.to_s
       @parent     = attrs.delete(:parent)
       @children   = FieldsSet.new(self)
-      @attributes = attrs.inject({}) { |_attrs, (attr, value)| _attrs.update(attr.to_s => value.to_s) }
+      @attributes = attrs.deep_stringify_keys.deep_transform_values { |v| v.to_s }
       field_type  = (block_given? ? 'object' : 'string') if field_type.nil?
       @type       = field_type.to_s
 
