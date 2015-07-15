@@ -4,7 +4,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "elastic-schema"
-  s.version     = '0.2.5'
+  s.version     = '0.2.6'
   s.platform    = Gem::Platform::RUBY
   s.license     = "MIT"
   s.authors     = ["Leandro Camargo"]

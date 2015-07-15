@@ -19,7 +19,8 @@ class Hash
     return enum_for(:deep_transform_values) unless block_given?
 
     inject(self.class.new) do |memo, (key, value)|
-      memo[key] = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
+      value = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
+      memo.update(key => value)
     end
   end
 
@@ -27,7 +28,8 @@ class Hash
     return enum_for(:deep_transform_values) unless block_given?
 
     inject(self) do |memo, (key, value)|
-      memo[key] = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
+      value = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
+      memo.update(key => value)
     end
   end
 end
