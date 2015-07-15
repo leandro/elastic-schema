@@ -15,26 +15,19 @@ class Hash
     end
   end
 
-  def deep_merge(other_hash, &block)
-    dup.deep_merge!(other_hash, &block)
+  def deep_transform_values(&block)
+    return enum_for(:deep_transform_values) unless block_given?
+
+    inject(self.class.new) do |memo, (key, value)|
+      memo[key] = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
+    end
   end
 
-  # Same as +deep_merge+, but modifies +self+.
-  def deep_merge!(other_hash, &block)
-    other_hash.each_pair do |current_key, other_value|
-      this_value = self[current_key]
+  def deep_transform_values!(&block)
+    return enum_for(:deep_transform_values) unless block_given?
 
-      self[current_key] = if this_value.is_a?(Hash) && other_value.is_a?(Hash)
-        this_value.deep_merge(other_value, &block)
-      else
-        if block_given? && key?(current_key)
-          block.call(current_key, this_value, other_value)
-        else
-          other_value
-        end
-      end
+    inject(self) do |memo, (key, value)|
+      memo[key] = value.is_a?(Hash) ? value.deep_transform_values(&block) : yield(value)
     end
-
-    self
   end
 end

@@ -4,7 +4,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __FILE__)
 
 Gem::Specification.new do |s|
   s.name        = "elastic-schema"
-  s.version     = '0.2.4'
+  s.version     = '0.2.5'
   s.platform    = Gem::Platform::RUBY
   s.license     = "MIT"
   s.authors     = ["Leandro Camargo"]
@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 2.0'
 
   s.add_dependency 'elasticsearch-api'
+  s.add_dependency 'activesupport'
 
   s.files            = `git ls-files -- lib/*`.split("\n")
   s.files           += ["License.txt"]

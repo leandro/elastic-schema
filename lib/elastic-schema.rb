@@ -1,5 +1,6 @@
 require 'elasticsearch'
 require 'utils/hash'
+require 'active_support/core_ext/hash'
 
 module ElasticSchema
   autoload :CLI,     'elastic-schema/cli'
