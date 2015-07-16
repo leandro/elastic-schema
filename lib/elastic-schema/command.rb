@@ -2,7 +2,8 @@ module ElasticSchema
 
   class Command
 
-    attr_reader :client, :root, :schema_dir, :options, :schema_file, :analysis_file
+    attr_reader :client, :root, :schema_dir, :options, :schema_file, :analysis_file,
+                :bulk_size
 
     def initialize(options)
       @options       = options
@@ -11,6 +12,7 @@ module ElasticSchema
       @schema_dir    = File.join(@root, options[:schema_dir]) if options[:schema_dir]
       @schema_file   = File.join(@root, options[:schema_file]) if options[:schema_file]
       @analysis_file = File.join(@root, options[:analysis_file]) if options[:analysis_file]
+      @bulk_size     = options[:bulk_size]
     end
 
     def run(command)
@@ -21,7 +23,9 @@ module ElasticSchema
 
     # Creates the indices/types and raise an exception if the any of the indices/types already exists
     def create
-      Schema::Migration.new(client, analysis_files, schema_files).load_definitions.run
+      opts = { client: client, analysis_files: analysis_files, schema_files: schema_files }
+      opts.update(bulk_size: bulk_size) if bulk_size
+      Schema::Migration.new(opts).load_definitions.run
     end
 
     def schema_files

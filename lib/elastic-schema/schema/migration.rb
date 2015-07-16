@@ -2,12 +2,16 @@ module ElasticSchema::Schema
 
   class Migration
 
-    attr_reader :schema_files, :client, :actual_schemas, :timestamp, :analysis_files
+    BULK_SIZE = 1000
 
-    def initialize(client, analysis_files, schema_files)
-      @client         = client
-      @analysis_files = analysis_files
-      @schema_files   = schema_files
+    attr_reader :schema_files, :client, :actual_schemas, :timestamp, :analysis_files,
+                :bulk_size
+
+    def initialize(options)
+      @client         = options[:client]
+      @analysis_files = options[:analysis_files]
+      @schema_files   = options[:schema_files]
+      @bulk_size      = (options[:bulk_size] || BULK_SIZE).to_i
       @actual_schemas = {}
       @timestamp      = Time.new.to_i
     end
@@ -100,7 +104,7 @@ module ElasticSchema::Schema
 
       puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
 
-      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '1m', size: 1000
+      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '1m', size: bulk_size
       alias_name     = new_index.split("_")[0..-2].join("_")
       fields_filter  = fields_whilelist(alias_name, type)
 

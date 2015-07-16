@@ -32,6 +32,9 @@ module ElasticSchema
         opts.on("-a", "--analysis_file FILE",
                 "define the analysis file to be used (overwritten by -d)") { |analysis_file| @options[:analysis_file] = analysis_file }
 
+        opts.on("-b", "--bulk_size SIZE",
+                "set documents bulk size for each bulk iteration performed during documents migration (default: 1000)") { |bulk_size| @options[:bulk_size] = bulk_size }
+
         opts.on("-d", "--schema_dir DIR",
                 "set directory where schema and analysis files are") { |schema_dir| @options[:schema_dir] = schema_dir }
 
