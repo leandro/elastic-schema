@@ -16,6 +16,10 @@ module ElasticSchema::Schema
       mappings.type(type_name, &block)
     end
 
+    def has_wildcard?
+      name.include?('*')
+    end
+
     def to_hash
       main_hash = {}
       main_hash.update(mappings.to_hash) if mappings
