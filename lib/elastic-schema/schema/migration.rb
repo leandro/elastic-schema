@@ -104,23 +104,26 @@ module ElasticSchema::Schema
 
       puts "Migrating #{doc_count} documents from type '#{type}' in index '#{old_index}' to index '#{new_index}'"
 
-      result         = client.search index: old_index, type: type, search_type: 'scan', scroll: '1m', size: bulk_size
-      alias_name     = new_index.split("_")[0..-2].join("_")
-      fields_filter  = fields_whilelist(alias_name, type)
+      result        = client.search index: old_index, type: type, search_type: 'scan', scroll: '1m', size: bulk_size
+      fields_filter = fields_whilelist(new_index, type)
 
       while (result = client.scroll(scroll_id: result['_scroll_id'], scroll: '1m')) && (docs = result['hits']['hits']).any?
-        body = docs.map do |document|
-                 bulk_item = { index: { _index: new_index, _type: type } }
-                 source    = document['_source'].deep_slice(*fields_filter)
-                 bulk_item[:index].update(_id: document['_id'], data: source)
-                 bulk_item
-               end
-        client.bulk(body: body)
+        client.bulk(body: generate_bulk_insert_body(new_index, type, docs, fields_filter))
       end
     end
 
-    def fields_whilelist(alias_name, type)
-      mapping = schemas[alias_name].to_hash.values.first['mappings'][type]['properties']
+    def generate_bulk_insert_body(index_name, type_name, documents, fields)
+      documents.map do |document|
+        bulk_item = { index: { _index: index_name, _type: type_name } }
+        source    = document['_source'].deep_slice(*fields)
+        bulk_item[:index].update(_id: document['_id'], data: source)
+        bulk_item
+      end
+    end
+
+    def fields_whilelist(index_name, type)
+      alias_name = index_name.split("_")[0..-2].join("_")
+      mapping    = schemas[alias_name].to_hash.values.first['mappings'][type]['properties']
       extract_field_names(mapping).map { |f| f.include?('.') ? f.split('.') : f }
     end
 
